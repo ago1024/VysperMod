@@ -68,6 +68,16 @@ public abstract class PlayerChannelMapper extends ChannelMapper {
 	}
 
 	/**
+	 * Get the global kingdom room entity
+	 * 
+	 * @return the global kingdom room entity
+	 */
+	public Optional<Entity> getGlobalKingdomRoom() {
+		return getKingdom()
+				.map(kingdom -> getGlobalKingdomId(kingdom));
+	}
+
+	/**
 	 * Get the village room entity.
 	 * 
 	 * @return the village room entity
@@ -83,7 +93,8 @@ public abstract class PlayerChannelMapper extends ChannelMapper {
 	 * @return the trade room entity
 	 */
 	public Optional<Entity> getTradeRoom() {
-		return Optional.empty();
+		return getKingdom()
+				.map(kingdom -> getTradeId(kingdom));
 	}
 
 	/**
@@ -97,6 +108,7 @@ public abstract class PlayerChannelMapper extends ChannelMapper {
 		getAllianceRoom().ifPresent(entities::add);
 		getVillageRoom().ifPresent(entities::add);
 		getKingdomRoom().ifPresent(entities::add);
+		getGlobalKingdomRoom().ifPresent(entities::add);
 		getTradeRoom().ifPresent(entities::add);
 
 		return entities;

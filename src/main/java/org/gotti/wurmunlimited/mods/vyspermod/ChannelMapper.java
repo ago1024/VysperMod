@@ -56,6 +56,19 @@ public class ChannelMapper {
 	}
 
 	/**
+	 * Create a global chat room entity for a kingdom
+	 * 
+	 * @param kingdom
+	 *            Kingdom
+	 * @return chat room entity
+	 */
+	public Entity getGlobalKingdomId(Kingdom kingdom) {
+		final String roomName = String.format("glkingdom%d", kingdom.getId());
+		final Entity roomId = createRoomEntity(roomName, kingdom.getName());
+		return roomId;
+	}
+
+	/**
 	 * Create a chat room entity for an alliance
 	 * 
 	 * @param alliance
@@ -65,6 +78,19 @@ public class ChannelMapper {
 	public Entity getAllianceId(PvPAlliance alliance) {
 		final String roomName = String.format("alliance%d", alliance.getId());
 		final Entity roomId = createRoomEntity(roomName, alliance.getName());
+		return roomId;
+	}
+
+	/**
+	 * Create a trade chat room entity for a kingdom
+	 * 
+	 * @param kingdom
+	 *            Kingdom
+	 * @return chat room entity
+	 */
+	public Entity getTradeId(Kingdom kingdom) {
+		final String roomName = String.format("trade%d", kingdom.getId());
+		final Entity roomId = createRoomEntity(roomName, kingdom.getName());
 		return roomId;
 	}
 
