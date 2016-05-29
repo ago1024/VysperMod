@@ -84,8 +84,12 @@ public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerSt
 				return mapper.getAllianceRoom();
 			} else if ("Village".equals(window)) {
 				return mapper.getVillageRoom();
+			} else if ("Trade".equals(window)) {
+				return mapper.getTradeRoom();
 			} else if (Kingdoms.isKingdomChat(window)) {
 				return mapper.getKingdomRoom();
+			} else if (Kingdoms.isGlobalKingdomChat(window)) {
+				return mapper.getGlobalKingdomRoom();
 			}
 		}
 		return Optional.empty();
@@ -138,7 +142,8 @@ public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerSt
 			mucModule = new MUCModule(subDomain, conference);
 			xmppModules.add(mucModule);
 			
-			this.sessionFactory = new PlayerSessionFactory(server, "game");
+			final String gameSubDomain = "game";
+			this.sessionFactory = new PlayerSessionFactory(server, gameSubDomain);
 			
 			((DefaultServerRuntimeContext)server.getServerRuntimeContext()).addModules(xmppModules);
 			
@@ -153,9 +158,19 @@ public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerSt
 				conference.findOrCreateRoom(allianceId.getBareJID(), allianceId.getResource());
 			}
 			for (Kingdom kingdom : Kingdoms.getAllKingdoms()) {
+				final Entity tradeId = channelMapper.getTradeId(kingdom);
+				conference.findOrCreateRoom(tradeId.getBareJID(), tradeId.getResource());
+				
 				final Entity kingdomId = channelMapper.getKingdomId(kingdom);
 				conference.findOrCreateRoom(kingdomId.getBareJID(), kingdomId.getResource());
+				
+				final Entity glKingdomId = channelMapper.getGlobalKingdomId(kingdom);
+				conference.findOrCreateRoom(glKingdomId.getBareJID(), glKingdomId.getResource());
 			}
+			
+			final Entity gameDomain = EntityUtils.createComponentDomain(gameSubDomain, server.getServerRuntimeContext());
+			((DefaultServerRuntimeContext)server.getServerRuntimeContext()).registerComponent(new GameStanzaProcessor(conference, gameDomain, gameSubDomain, fullDomain));
+			
 		} catch (Exception e) {
 			LOGGER.log(Level.SEVERE, e.getMessage(), e);
 			throw new HookException(e);
