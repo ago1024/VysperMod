@@ -98,14 +98,21 @@ public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerSt
 	private void sendMessageToRooms(Message message) {
 		getRoom(message).map(conference::getOrCreateRoom).ifPresent(room -> {
 			
-			PlayerSession session = getPlayerSession((Player) message.getSender());
+			final Player player = (Player) message.getSender();
+			String prefix = "<" + player.getName() + "> ";
+			String text = message.getMessage();
+			if (text.startsWith(prefix)) {
+				text = text.substring(prefix.length());
+			}
+			
+			PlayerSession session = getPlayerSession(player);
 			
 			Stanza stanza = new StanzaBuilder("message")
 					.addAttribute("type", "groupchat")
 					.addAttribute("from", session.getPlayerEntity().getFullQualifiedName())
 					.addAttribute("to", room.getJID().getFullQualifiedName())
 					.startInnerElement("body")
-					.addText(message.getMessage())
+					.addText(text)
 					.endInnerElement().build();
 			
 			session.send(stanza);
@@ -182,7 +189,7 @@ public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerSt
 		Entity playerEntity = session.getPlayerEntity();
 
 		Room room = conference.getOrCreateRoom(roomEntity);
-		if (!room.isInRoom(playerEntity.getBareJID())) {
+		if (!room.isInRoom(playerEntity)) {
 			
 			Stanza stanza = new StanzaBuilder("presence")
 					.addAttribute("from", playerEntity.getBareJID().getFullQualifiedName())
@@ -198,7 +205,7 @@ public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerSt
 		Entity playerEntity = session.getPlayerEntity();
 		
 		Room room = conference.getOrCreateRoom(roomEntity);
-		if (room.isInRoom(playerEntity.getBareJID())) {
+		if (room.isInRoom(playerEntity)) {
 			
 			Stanza stanza = new StanzaBuilder("presence")
 					.addAttribute("from", playerEntity.getBareJID().getFullQualifiedName())
