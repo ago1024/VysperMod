@@ -21,6 +21,7 @@ import org.apache.vysper.xmpp.server.XMPPServer;
 import org.apache.vysper.xmpp.stanza.Stanza;
 import org.apache.vysper.xmpp.stanza.StanzaBuilder;
 import org.gotti.wurmunlimited.modloader.classhooks.HookException;
+import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 import org.gotti.wurmunlimited.modloader.interfaces.ChannelMessageListener;
 import org.gotti.wurmunlimited.modloader.interfaces.Initable;
 import org.gotti.wurmunlimited.modloader.interfaces.MessagePolicy;
@@ -29,14 +30,25 @@ import org.gotti.wurmunlimited.modloader.interfaces.PreInitable;
 import org.gotti.wurmunlimited.modloader.interfaces.ServerPollListener;
 import org.gotti.wurmunlimited.modloader.interfaces.ServerStartedListener;
 import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
+import org.gotti.wurmunlimited.mods.vyspermod.ui.ManageVysperAction;
+import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import com.wurmonline.server.Message;
+import com.wurmonline.server.behaviours.ActionEntry;
+import com.wurmonline.server.behaviours.Actions;
 import com.wurmonline.server.kingdom.Kingdom;
 import com.wurmonline.server.kingdom.Kingdoms;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.server.villages.PvPAlliance;
 import com.wurmonline.server.villages.Village;
 import com.wurmonline.server.villages.Villages;
+
+import javassist.CannotCompileException;
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtMethod;
+import javassist.NotFoundException;
+import javassist.bytecode.Descriptor;
 
 public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerStartedListener, PlayerLoginListener, ServerPollListener, ChannelMessageListener {
 
@@ -65,16 +77,50 @@ public class VysperMod implements WurmServerMod, PreInitable, Initable, ServerSt
 
 	private PlayerSessionFactory sessionFactory;
 	
+	private ManageVysperAction manageVysperAction;
+	
 	@Override
 	public void onServerStarted() {
 		startServer();
+		
+		manageVysperAction = new ManageVysperAction();
+		ModActions.registerActionPerformer(manageVysperAction);
 	}
 
 	@Override
 	public void preInit() {
 		LOGGER.info("preInit");
+		
+		try {
+			// "com.wurmonline.server.behaviours.ManageMenu.getBehavioursFor(Creature)"
+			final ClassPool classPool = HookManager.getInstance().getClassPool();
+			final String descriptor = Descriptor.ofMethod(classPool.get(List.class.getName()), new CtClass[] { classPool.get("com.wurmonline.server.creatures.Creature") });
+			final CtClass ctManageMenu = classPool.get("com.wurmonline.server.behaviours.ManageMenu");
+			final CtMethod ctGetBehavioursFor = ctManageMenu.getMethod("getBehavioursFor", descriptor);
+			
+			final Object callback = new Object() {
+				@SuppressWarnings("unused")
+				public void appendManageAction(List<ActionEntry> actions) {
+					if (manageVysperAction == null) {
+						// Fail fast if the action is not initialized (should have been done in onServerStarted)
+						return;
+					}
+					// Increment the submenu size if a submenu is created
+					if (!actions.isEmpty() && actions.get(0).getNumber() < 0) {
+						ActionEntry oldHead = actions.get(0);
+						actions.set(0, new ActionEntry((short) (oldHead.getNumber() - 1), oldHead.getActionString(), oldHead.getVerbString()));
+					}
+					// Add the action
+					actions.add(new ActionEntry(manageVysperAction.getActionId(), "Vysper", "managing"));
+				}
+			};
+			HookManager.getInstance().addCallback(ctManageMenu, "vyspermod", callback);
+			ctGetBehavioursFor.insertAfter("vyspermod.appendManageAction($_);");
+		} catch (NotFoundException | CannotCompileException e) {
+			throw new HookException(e);
+		}
 	}
-
+	
 	private Optional<Entity> getRoom(Message message) {
 		String window = message.getWindow();
 		if (message.getSender() instanceof Player) {
